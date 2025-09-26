@@ -1,138 +1,138 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.get('/', (req, res) => {
-  res.send(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Triangle</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/index.min.js"></script>
   <style>
-    body { font-family: Arial; text-align: center; background: #f4f4f4; }
-    video { width: 45%; margin: 10px; border: 1px solid #ccc; }
-    #chat { height: 200px; overflow-y: scroll; background: white; margin: 10px auto; width: 80%; border: 1px solid #ccc; padding: 10px; }
-    input { width: 60%; padding: 10px; }
-    button { padding: 10px 20px; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: white;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 3em;
+      letter-spacing: 2px;
+    }
+
+    #chat {
+      margin: 40px auto;
+      width: 80%;
+      max-width: 600px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    #avatar {
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+
+    #messages {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+      width: 70%;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #00bcd4;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #0097a7;
+    }
+
+    #loading {
+      margin-top: 20px;
+      font-size: 1.2em;
+      display: none;
+    }
+
+    footer {
+      margin-top: 50px;
+      color: #ccc;
+    }
   </style>
 </head>
 <body>
   <h1>Triangle</h1>
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
-  <div id="chat"></div>
-  <input type="text" id="message" placeholder="Type your message..." />
-  <button onclick="sendMessage()">Send</button>
+  <div id="loading">🔄 Connecting you to a stranger...</div>
+  <div id="chat" style="display:none;">
+    <img id="avatar" src="" width="60" />
+    <div id="messages"></div>
+    <input id="input" type="text" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+    <button id="emoji-btn">😊</button>
+  </div>
+  <footer>Made with ❤️ by Triangle Team | Gurugram, India</footer>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const localVideo = document.getElementById('localVideo');
-    const remoteVideo = document.getElementById('remoteVideo');
+    const loading = document.getElementById('loading');
     const chat = document.getElementById('chat');
-    const messageInput = document.getElementById('message');
+    const messages = document.getElementById('messages');
+    const input = document.getElementById('input');
+    const avatar = document.getElementById('avatar');
 
-    let peerConnection;
-    const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    // Generate random avatar
+    const avatarId = Math.random().toString(36).substring(7);
+    avatar.src = `https://avatars.dicebear.com/api/identicon/${avatarId}.svg`;
 
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(stream => {
-      localVideo.srcObject = stream;
+    // Emoji picker
+    const picker = new EmojiButton();
+    document.getElementById('emoji-btn').addEventListener('click', () => {
+      picker.togglePicker(document.getElementById('emoji-btn'));
+    });
+    picker.on('emoji', emoji => {
+      input.value += emoji;
+    });
 
-      socket.emit('ready');
+    loading.style.display = 'block';
 
-      socket.on('offer', offer => {
-        peerConnection = new RTCPeerConnection(config);
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-        peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        peerConnection.createAnswer().then(answer => {
-          peerConnection.setLocalDescription(answer);
-          socket.emit('answer', answer);
-        });
-        peerConnection.ontrack = e => remoteVideo.srcObject = e.streams[0];
-        peerConnection.onicecandidate = e => {
-          if (e.candidate) socket.emit('candidate', e.candidate);
-        };
-      });
+    socket.on('partner-found', () => {
+      loading.style.display = 'none';
+      chat.style.display = 'block';
+      messages.innerHTML += '<p>✅ Connected to a stranger.</p>';
+    });
 
-      socket.on('answer', answer => {
-        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-      });
+    socket.on('message', (msg) => {
+      messages.innerHTML += `<p>Stranger: ${msg}</p>`;
+    });
 
-      socket.on('candidate', candidate => {
-        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-
-      socket.on('ready', () => {
-        peerConnection = new RTCPeerConnection(config);
-        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
-        peerConnection.ontrack = e => remoteVideo.srcObject = e.streams[0];
-        peerConnection.onicecandidate = e => {
-          if (e.candidate) socket.emit('candidate', e.candidate);
-        };
-        peerConnection.createOffer().then(offer => {
-          peerConnection.setLocalDescription(offer);
-          socket.emit('offer', offer);
-        });
-      });
+    socket.on('partner-disconnected', () => {
+      messages.innerHTML += '<p>❌ Stranger disconnected.</p>';
     });
 
     function sendMessage() {
-      const msg = messageInput.value;
+      const msg = input.value;
       if (msg.trim()) {
-        chat.innerHTML += \`<p><strong>You:</strong> \${msg}</p>\`;
+        messages.innerHTML += `<p>You: ${msg}</p>`;
         socket.emit('message', msg);
-        messageInput.value = '';
+        input.value = '';
       }
     }
-
-    socket.on('message', msg => {
-      chat.innerHTML += \`<p><strong>Stranger:</strong> \${msg}</p>\`;
-    });
   </script>
 </body>
 </html>
-  `);
-});
-
-let waiting = null;
-
-io.on('connection', socket => {
-  if (waiting) {
-    socket.partner = waiting;
-    waiting.partner = socket;
-    waiting.emit('ready');
-    socket.emit('ready');
-    waiting = null;
-  } else {
-    waiting = socket;
-  }
-
-  socket.on('offer', offer => {
-    if (socket.partner) socket.partner.emit('offer', offer);
-  });
-
-  socket.on('answer', answer => {
-    if (socket.partner) socket.partner.emit('answer', answer);
-  });
-
-  socket.on('candidate', candidate => {
-    if (socket.partner) socket.partner.emit('candidate', candidate);
-  });
-
-  socket.on('message', msg => {
-    if (socket.partner) socket.partner.emit('message', msg);
-  });
-
-  socket.on('disconnect', () => {
-    if (socket.partner) socket.partner.emit('disconnect');
-    if (waiting === socket) waiting = null;
-  });
-});
-
-server.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
