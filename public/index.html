@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Triangle</title>
+  <title>💞 Triangle: Meet Someone New 💞</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <script src="https://cdn.jsdelivr.net/npm/@joeattardi/emoji-button@4.6.2/dist/index.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
-      color: white;
+      background: linear-gradient(to right, #ff5f6d, #ffc371);
+      color: #fff;
       margin: 0;
       padding: 0;
       text-align: center;
@@ -20,20 +20,23 @@
       margin-top: 30px;
       font-size: 3em;
       letter-spacing: 2px;
+      color: #fff;
     }
 
     #chat {
       margin: 40px auto;
       width: 80%;
-      max-width: 600px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 20px;
+      max-width: 700px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
     }
 
     #avatar {
       border-radius: 50%;
       margin-bottom: 10px;
+      border: 3px solid #fff;
     }
 
     #messages {
@@ -42,25 +45,27 @@
     }
 
     input[type="text"] {
-      width: 70%;
-      padding: 10px;
-      border-radius: 5px;
+      width: 65%;
+      padding: 12px;
+      border-radius: 8px;
       border: none;
       margin-top: 10px;
+      font-size: 1em;
     }
 
     button {
-      padding: 10px 20px;
+      padding: 12px 24px;
       border: none;
-      background-color: #00bcd4;
+      background-color: #ff4081;
       color: white;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
       margin-top: 10px;
+      font-size: 1em;
     }
 
     button:hover {
-      background-color: #0097a7;
+      background-color: #e91e63;
     }
 
     #loading {
@@ -69,15 +74,30 @@
       display: none;
     }
 
+    #video-chat {
+      display: none;
+      margin: 20px auto;
+      max-width: 700px;
+    }
+
+    video {
+      width: 45%;
+      margin: 10px;
+      border-radius: 10px;
+      border: 2px solid #fff;
+    }
+
     footer {
       margin-top: 50px;
-      color: #ccc;
+      color: #fff;
+      font-size: 0.9em;
     }
   </style>
 </head>
 <body>
-  <h1>Triangle</h1>
+  <h1>💞 Triangle: Meet Someone New 💞</h1>
   <div id="loading">🔄 Connecting you to a stranger...</div>
+
   <div id="chat" style="display:none;">
     <img id="avatar" src="" width="60" />
     <div id="messages"></div>
@@ -85,6 +105,12 @@
     <button onclick="sendMessage()">Send</button>
     <button id="emoji-btn">😊</button>
   </div>
+
+  <div id="video-chat">
+    <video id="localVideo" autoplay muted playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+
   <footer>Made with ❤️ by Triangle Team | Gurugram, India</footer>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -95,6 +121,9 @@
     const messages = document.getElementById('messages');
     const input = document.getElementById('input');
     const avatar = document.getElementById('avatar');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const videoChat = document.getElementById('video-chat');
 
     const avatarId = Math.random().toString(36).substring(7);
     avatar.src = `https://avatars.dicebear.com/api/identicon/${avatarId}.svg`;
@@ -113,6 +142,7 @@
       loading.style.display = 'none';
       chat.style.display = 'block';
       messages.innerHTML += '<p>✅ Connected to a stranger.</p>';
+      startVideo();
     });
 
     socket.on('message', (msg) => {
@@ -131,6 +161,21 @@
         input.value = '';
       }
     }
+
+    function startVideo() {
+      navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+          localVideo.srcObject = stream;
+          videoChat.style.display = 'block';
+          socket.emit('ready-for-video');
+        })
+        .catch(error => {
+          console.error('Video error:', error);
+        });
+    }
+
+    // Placeholder for WebRTC signaling logic
+    // You’ll need to implement peer connection setup here
   </script>
 </body>
 </html>
